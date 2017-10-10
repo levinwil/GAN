@@ -232,32 +232,12 @@ class GAN(object):
         g = self.generator_model()
         g.compile(loss='binary_crossentropy', optimizer="SGD")
         g.load_weights('weights/' + str(self.GAN_name) + '_generator')
-        if nice:
-            d = self.discriminator_model()
-            d.compile(loss='binary_crossentropy', optimizer="SGD")
-            d.load_weights('weights/' + str(self.GAN_name) + '_discriminator')
-            noise = np.random.uniform(-1, 1, (NUM_PICTURES_TO_GENERATE*20, 100))
-            generated_images = g.predict(noise, verbose=1)
-            d_pret = d.predict(generated_images, verbose=1)
-            index = np.arange(0, NUM_PICTURES_TO_GENERATE*20)
-            index.resize((NUM_PICTURES_TO_GENERATE*20, 1))
-            pre_with_index = list(np.append(d_pret, index, axis=1))
-            pre_with_index.sort(key=lambda x: x[0], reverse=True)
-            nice_images = np.zeros((NUM_PICTURES_TO_GENERATE,) \
-            + generated_images.shape[1:3], dtype=np.float32)
-            nice_images = nice_images[:, :, :, None]
-            for i in range(NUM_PICTURES_TO_GENERATE):
-                idx = int(pre_with_index[i][1])
-                nice_image = generated_images[idx, :, :, 0]*127.5 + 127.5
-                Image.fromarray(nice_image.astype(np.uint8)).save(
-                    "generated_images/" + str(self.GAN_name) + "_generated_image_" + str(i) + ".png")
-        else:
-            noise = np.random.uniform(-1, 1, (NUM_PICTURES_TO_GENERATE, 100))
-            generated_images = g.predict(noise, verbose=1)
-            for i in range(NUM_PICTURES_TO_GENERATE):
-                generated_image = generated_images[i, :, :, 0]*127.5 + 127.5
-                Image.fromarray(generated_image.astype(np.uint8)).save(
-                    "generated_images/" + str(self.GAN_name) + "_generated_image_" + str(i) + ".png")
+        noise = np.random.uniform(-1, 1, (NUM_PICTURES_TO_GENERATE, 100))
+        generated_images = g.predict(noise, verbose=1)
+        for i in range(NUM_PICTURES_TO_GENERATE):
+            generated_image = generated_images[i, :, :, 0]*127.5 + 127.5
+            Image.fromarray(generated_image.astype(np.uint8)).save(
+                "generated_images/" + str(self.GAN_name) + "_generated_image_" + str(i) + ".png")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A general image generator.')
@@ -269,13 +249,26 @@ if __name__ == "__main__":
     parser.add_argument("--generate", help="Generate data using the generator \
     under the GAN name. Saves the data to generated_images. Type true after if \
     you'd like to generate.")
+    parser.add_argument("--width", help="The width of the images you're \
+    using to train.", type=int)
+    parser.add_argument("--height", help="The height of the images you're \
+    using to train.", type=int)
+    parser.add_argument("--num_images", help="The number of images you'd like \
+    to generate.", type=int)
     args = parser.parse_args()
 
     if args.GAN_name == "" or args.GAN_name == None :
         raise ValueError("You must specify a GAN name")
-
-    gan = GAN(GAN_name = args.GAN_name, img_width = 128, img_height = 128)
+    if args.width == None or args.height == None:
+        gan = GAN(GAN_name = args.GAN_name, img_width = 128, img_height = 128)
+    else:
+        gan = GAN(GAN_name = args.GAN_name,
+                  img_width = args.width,
+                  img_height = args.height)
     if args.train:
         gan.train(BATCH_SIZE = 10, NUM_EPOCHS = 1000)
     if args.generate:
-        gan.generate(NUM_PICTURES_TO_GENERATE = 1, nice = True)
+        if args.num_images == None:
+            gan.generate(NUM_PICTURES_TO_GENERATE = 1, nice = True)
+        else:
+            gan.generate(NUM_PICTURES_TO_GENERATE = args.num_images, nice = False)
